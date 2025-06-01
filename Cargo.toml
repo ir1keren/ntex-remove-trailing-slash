@@ -1,7 +1,12 @@
 [package]
 name = "ntex-remove-trailing-slash"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
+description = "Removing trailing slash on ntex Framework, inspired by actix's"
+keywords = ["network", "framework", "ntex", "url", "trailing", "slash"]
+repository = "https://github.com/ir1keren/ntex-remove-trailing-slash.git"
+categories = ["network-programming", "asynchronous", "ntex"]
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 ntex = "2.12"
