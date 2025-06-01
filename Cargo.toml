@@ -5,7 +5,7 @@ edition = "2021"
 description = "Removing trailing slash on ntex Framework, inspired by actix's"
 keywords = ["network", "framework", "ntex", "url", "slash"]
 repository = "https://github.com/ir1keren/ntex-remove-trailing-slash.git"
-categories = ["network-programming", "asynchronous", "ntex"]
+categories = ["network-programming", "web-programming"]
 license = "MIT OR Apache-2.0"
 
 [dependencies]
