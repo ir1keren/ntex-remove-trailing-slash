@@ -1,4 +1,5 @@
-use ntex::http::uri::{PathAndQuery, Uri};
+use ntex::http::{header, uri::{PathAndQuery, Uri}, StatusCode};
+use ntex::web::HttpResponse;
 use ntex::util::Bytes;
 use ntex::{forward_poll, forward_ready, forward_shutdown, Service, ServiceCtx};
 use ntex::web::{WebRequest, WebResponse};
@@ -63,5 +64,80 @@ where
         }
 
         ctx.call(&self.service, req).await
+    }
+}
+
+#[derive(Debug)]
+pub struct RedirectHttps {
+    pub port: u16
+}
+
+impl Default for RedirectHttps {
+    fn default() -> Self {
+        RedirectHttps { port: 443 }
+    }
+}
+
+impl RedirectHttps {
+    pub fn new(port: u16) -> Self {
+        RedirectHttps { port }
+    }
+}
+
+impl<S> ntex::Middleware<S> for RedirectHttps
+{
+    type Service = RedirectHttpsMiddleware<S>;
+
+    fn create(&self, service: S) -> Self::Service {
+        RedirectHttpsMiddleware {
+            port: self.port,
+            service
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct RedirectHttpsMiddleware<S> {
+    port: u16,
+    service: S
+}
+
+impl<S, E> Service<WebRequest<E>> for RedirectHttpsMiddleware<S>
+where
+    S: Service<WebRequest<E>, Response = WebResponse>
+{
+    type Response = WebResponse;
+    type Error = S::Error;
+
+    forward_poll!(service);
+    forward_ready!(service);
+    forward_shutdown!(service);
+
+    async fn call(&self, req: WebRequest<E>, ctx: ServiceCtx<'_, Self>) -> Result<Self::Response, Self::Error> {
+        let is_https = req.connection_info().scheme() == "https";
+
+        if is_https {
+            ctx.call(&self.service, req).await
+        } else {
+            let host = req.connection_info().host().to_string();
+            let host_parts: Vec<&str> = host.split(':').collect();
+
+            let host=if self.port == 443 {
+                if host_parts.len() > 1 {
+                    host_parts[0].to_string()
+                } else {
+                    host.to_string()
+                }
+            } else {
+                if host_parts.len() > 1 {
+                    format!("{}:{}", host_parts[0], self.port)
+                } else {
+                    format!("{}:{}", host, self.port)
+                }
+            };
+            let uri = format!("https://{}{}", &host, req.uri());
+            let response = req.into_response(HttpResponse::MovedPermanently().header(header::LOCATION, uri).finish());
+            Ok(response)
+        }
     }
 }
